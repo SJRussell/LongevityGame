@@ -48,34 +48,35 @@
             to { transform: translateX(0); opacity: 1; }
         }
         .shake-active {
-            animation: shake 0.1s ease-in-out infinite;
+            animation: shake 0.6s ease-in-out infinite;
         }
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-2px); }
-            75% { transform: translateX(2px); }
+            30% { transform: translateX(-4px); }
+            60% { transform: translateX(4px); }
         }
         .notification {
             position: fixed;
-            top: 50%;
+            bottom: 8%;
             left: 50%;
-            transform: translate(-50%, -50%) scale(0);
-            background: rgba(0, 0, 0, 0.9);
+            transform: translate(-50%, 100%) scale(0.95);
+            background: rgba(15, 23, 42, 0.92);
             color: white;
-            padding: 2rem 3rem;
+            padding: 1.5rem 2.5rem;
             border-radius: 1rem;
-            font-size: 1.5rem;
-            font-weight: bold;
+            font-size: 1.35rem;
+            font-weight: 600;
             z-index: 1000;
-            animation: popNotification 1.5s ease-out;
+            animation: riseNotification 2.2s ease-out forwards;
             pointer-events: none;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.45);
         }
-        @keyframes popNotification {
-            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-            10% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
-            20% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-            80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-            100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+        @keyframes riseNotification {
+            0% { transform: translate(-50%, 100%) scale(0.9); opacity: 0; }
+            12% { transform: translate(-50%, 0%) scale(1); opacity: 1; }
+            80% { transform: translate(-50%, 0%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, 30%) scale(0.95); opacity: 0; }
         }
         .pulse {
             animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
@@ -132,7 +133,7 @@
 
                 <div class="bg-slate-900/50 rounded-xl p-4">
                     <div class="font-semibold text-green-400 mb-2">💪 Build Resilience</div>
-                    <p>Spend Resilience Points on Exercise, Sleep, Diet, and Connection to physically strengthen your valley walls.</p>
+                    <p>Invest in strength training, cardio, restorative sleep, nourishing food, connection, and mindfulness to reinforce your valley walls.</p>
                 </div>
 
                 <div class="bg-slate-900/50 rounded-xl p-4">
@@ -189,6 +190,10 @@
                         <span class="text-slate-400">Tether Strength:</span>
                         <span class="text-white font-semibold" id="statTethers">0.0</span>
                     </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400">Stress Buffer:</span>
+                        <span class="text-white font-semibold" id="statBuffer">0%</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -217,36 +222,52 @@
                     Build Your Resilience
                 </h3>
                 <div class="space-y-3">
-                    <button id="btnExercise" class="btn-intervention w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold py-3 px-4 rounded-xl shadow-lg">
+                    <button id="btnResistance" class="btn-intervention w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold py-3 px-4 rounded-xl shadow-lg">
                         <div class="flex justify-between items-center">
-                            <span>💪 Invest in Exercise</span>
-                            <span class="text-blue-200 text-sm">60 RP</span>
+                            <span>🏋️ Resistance Training</span>
+                            <span class="text-blue-200 text-sm">55 RP</span>
                         </div>
-                        <div class="text-xs text-blue-200 mt-1 text-left">Builds taller valley walls</div>
+                        <div class="text-xs text-blue-200 mt-1 text-left">Strengthens and raises your valley walls</div>
+                    </button>
+
+                    <button id="btnCardio" class="btn-intervention w-full bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-400 hover:to-sky-500 text-white font-semibold py-3 px-4 rounded-xl shadow-lg">
+                        <div class="flex justify-between items-center">
+                            <span>🚴 Cardiovascular Training</span>
+                            <span class="text-sky-100 text-sm">50 RP</span>
+                        </div>
+                        <div class="text-xs text-sky-100 mt-1 text-left">Improves flow and widens the valley floor</div>
                     </button>
 
                     <button id="btnSleep" class="btn-intervention w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-semibold py-3 px-4 rounded-xl shadow-lg">
                         <div class="flex justify-between items-center">
-                            <span>😴 Prioritize Sleep</span>
+                            <span>😴 Restorative Sleep</span>
                             <span class="text-purple-200 text-sm">35 RP</span>
                         </div>
-                        <div class="text-xs text-purple-200 mt-1 text-left">Deepens your valley</div>
+                        <div class="text-xs text-purple-200 mt-1 text-left">Deep, regular sleep stabilizes your terrain</div>
                     </button>
 
-                    <button id="btnDiet" class="btn-intervention w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white font-semibold py-3 px-4 rounded-xl shadow-lg">
+                    <button id="btnNutrition" class="btn-intervention w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white font-semibold py-3 px-4 rounded-xl shadow-lg">
                         <div class="flex justify-between items-center">
-                            <span>🥗 Build Healthy Diet</span>
-                            <span class="text-green-200 text-sm">45 RP</span>
+                            <span>🥗 Nutrient-Dense Fuel</span>
+                            <span class="text-green-200 text-sm">40 RP</span>
                         </div>
-                        <div class="text-xs text-green-200 mt-1 text-left">Widens your valley floor</div>
+                        <div class="text-xs text-green-200 mt-1 text-left">Broadens and smooths your valley foundation</div>
                     </button>
 
                     <button id="btnConnection" class="btn-intervention w-full bg-gradient-to-r from-pink-600 to-pink-700 hover:from-pink-500 hover:to-pink-600 text-white font-semibold py-3 px-4 rounded-xl shadow-lg">
                         <div class="flex justify-between items-center">
-                            <span>❤️ Foster Connection</span>
-                            <span class="text-pink-200 text-sm">25 RP</span>
+                            <span>❤️ Social Connection</span>
+                            <span class="text-pink-200 text-sm">30 RP</span>
                         </div>
-                        <div class="text-xs text-pink-200 mt-1 text-left">Creates safety net tethers</div>
+                        <div class="text-xs text-pink-200 mt-1 text-left">Weaves safety net tethers beneath the orb</div>
+                    </button>
+
+                    <button id="btnMindfulness" class="btn-intervention w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-900 font-semibold py-3 px-4 rounded-xl shadow-lg">
+                        <div class="flex justify-between items-center">
+                            <span>🧘 Mindfulness & Recovery</span>
+                            <span class="text-amber-100 text-sm">30 RP</span>
+                        </div>
+                        <div class="text-xs text-amber-900/90 mt-1 text-left">Calms stress waves before they reach the valley</div>
                     </button>
                 </div>
             </div>
@@ -278,32 +299,41 @@
         // ============================================
         // GAME STATE
         // ============================================
-        let scene, camera, renderer, plane, orb;
+        let scene, camera, renderer, plane, orb, orbLight;
         let gameRunning = true;
         let age = 20;
         let resiliencePoints = 100;
         let valleyDepth = 2.0;
         let valleyWidth = 3.0;
         let valleyTethers = 0;
+        let stressBuffer = 0;
 
         // Physics
         let orbVelocity = new THREE.Vector3(0, 0, 0);
+        const cameraTarget = new THREE.Vector3();
         const GRAVITY = 9.8;
-        const DAMPING = 0.96;
+        const DAMPING = 0.94;
 
         // Shake system
-        let shake = { intensity: 0, time: 0, duration: 0 };
+        let shake = { intensity: 0, time: 0, duration: 0, phase: 0, frequency: 0 };
 
         // Stressor queue
         let stressorQueue = [];
         let nextStressorTime = 3;
         let isShaking = false;
 
+        // Camera orbit
+        const CAMERA_DISTANCE = 25;
+        let cameraAzimuth = 0;
+        let cameraElevation = Math.atan2(18, 18);
+        let isDraggingView = false;
+        let lastPointer = { x: 0, y: 0 };
+
         // Timing
         let lastTime = Date.now();
         let ageTimer = 0;
-        const AGE_INCREMENT_TIME = 1.5; // 1 year every 1.5 seconds
-        const RP_PER_SECOND = 3;
+        const AGE_INCREMENT_TIME = 1.0; // 1 year every second
+        const RP_PER_SECOND = 2.5;
 
         // Disease valleys (positions and properties)
         const diseaseValleys = [
@@ -311,7 +341,14 @@
             { name: "Metabolic Valley", pos: new THREE.Vector3(12, 0, -12), color: 0x9333ea, emoji: "💎" },
             { name: "Cardio Canyon", pos: new THREE.Vector3(0, 0, 12), color: 0x7f1d1d, emoji: "💔" }
         ];
-        const FAILURE_RADIUS = 4.0;
+        const FAILURE_RADIUS = 3.3;
+
+        const STRESS_REDUCTION_PER_LEVEL = 0.12;
+        const STRESS_REDUCTION_CAP = 0.45;
+
+        function getStressReduction() {
+            return Math.min(stressBuffer * STRESS_REDUCTION_PER_LEVEL, STRESS_REDUCTION_CAP);
+        }
 
         // Tether lines
         let tetherLines = [];
@@ -585,41 +622,74 @@
         // ============================================
         // INTERVENTIONS
         // ============================================
-        function purchaseIntervention(type) {
-            const costs = {
-                exercise: 60,
-                sleep: 35,
-                diet: 45,
-                connection: 25
-            };
-
-            const cost = costs[type];
-
-            if (resiliencePoints < cost) return;
-
-            resiliencePoints -= cost;
-
-            switch(type) {
-                case 'exercise':
-                    valleyDepth += 0.35;
-                    showNotification('💪 Exercise builds your valley walls!');
-                    break;
-                case 'sleep':
-                    valleyDepth += 0.15;
-                    showNotification('😴 Sleep deepens your resilience!');
-                    break;
-                case 'diet':
-                    valleyWidth += 0.15;
-                    showNotification('🥗 Healthy diet expands your foundation!');
-                    break;
-                case 'connection':
-                    valleyTethers += 0.25;
-                    updateTetherLines();
-                    showNotification('❤️ Connection creates a safety net!');
-                    break;
+        const interventions = {
+            resistance: {
+                buttonId: 'btnResistance',
+                cost: 55,
+                apply: () => {
+                    valleyDepth = Math.min(valleyDepth + 0.35, 6.0);
+                    showNotification('🏋️ Resistance work fortified your valley walls!');
+                    createLandscape();
+                }
+            },
+            cardio: {
+                buttonId: 'btnCardio',
+                cost: 50,
+                apply: () => {
+                    valleyWidth = Math.min(valleyWidth + 0.25, 5.5);
+                    showNotification('🚴 Cardio training broadened your valley floor!');
+                    createLandscape();
+                }
+            },
+            sleep: {
+                buttonId: 'btnSleep',
+                cost: 35,
+                apply: () => {
+                    valleyDepth = Math.min(valleyDepth + 0.2, 6.2);
+                    orbVelocity.multiplyScalar(0.5);
+                    showNotification('😴 Restorative sleep settled your terrain.');
+                    createLandscape();
+                }
+            },
+            nutrition: {
+                buttonId: 'btnNutrition',
+                cost: 40,
+                apply: () => {
+                    valleyWidth = Math.min(valleyWidth + 0.18, 5.8);
+                    valleyDepth = Math.min(valleyDepth + 0.05, 6.3);
+                    showNotification('🥗 Nourishing food fortified your foundation.');
+                    createLandscape();
+                }
+            },
+            connection: {
+                buttonId: 'btnConnection',
+                cost: 30,
+                apply: () => {
+                    valleyTethers = Math.min(valleyTethers + 0.35, 4.0);
+                    showNotification('❤️ Community support strengthened your safety net!');
+                }
+            },
+            mindfulness: {
+                buttonId: 'btnMindfulness',
+                cost: 30,
+                apply: () => {
+                    stressBuffer = Math.min(stressBuffer + 1, 6);
+                    showNotification('🧘 Mindfulness softened the shock of future stressors.');
+                }
             }
+        };
 
-            createLandscape();
+        function purchaseIntervention(type) {
+            const intervention = interventions[type];
+            if (!intervention) return;
+
+            if (resiliencePoints < intervention.cost) return;
+
+            resiliencePoints -= intervention.cost;
+            intervention.apply();
+
+            updateOrbToFloor();
+            updateTetherLines();
             updateUI();
         }
 
@@ -632,7 +702,7 @@
 
             setTimeout(() => {
                 notification.remove();
-            }, 1500);
+            }, 2300);
 
             console.log(message);
         }
@@ -660,9 +730,16 @@
 
         function triggerStressor(stressor) {
             isShaking = true;
-            shake.intensity = stressor.intensity;
-            shake.time = stressor.duration;
-            shake.duration = stressor.duration;
+            const ageDifficulty = Math.max(0, (age - 20) / 60);
+            const intensityScale = 1 + ageDifficulty * 0.9;
+            const durationScale = 1 + ageDifficulty * 0.4;
+            const bufferedIntensity = stressor.intensity * intensityScale * (1 - getStressReduction());
+
+            shake.intensity = Math.max(bufferedIntensity, 0.08);
+            shake.duration = stressor.duration * durationScale;
+            shake.time = shake.duration;
+            shake.frequency = 1.4 + Math.random() * 0.6 + ageDifficulty * 0.6;
+            shake.phase = 0;
 
             // Visual feedback
             document.body.classList.add('shake-active');
@@ -675,7 +752,10 @@
 
                 setTimeout(() => {
                     valleyDepth = originalDepth;
-                    createLandscape();
+                    if (gameRunning) {
+                        createLandscape();
+                        updateOrbToFloor();
+                    }
                 }, 5000);
             }
 
