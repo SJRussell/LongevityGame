@@ -153,6 +153,33 @@ Resilience Valley teaches important concepts about:
 
 ---
 
+## 🌐 GitHub Pages Deployment
+
+This game is ready to be deployed on GitHub Pages!
+
+### Setup Instructions
+
+1. **Enable GitHub Pages** in your repository:
+   - Go to repository Settings → Pages
+   - Under "Source", select the branch (e.g., `main` or your feature branch)
+   - Choose `/ (root)` as the folder
+   - Click Save
+
+2. **Access your game**:
+   - Your game will be available at: `https://[username].github.io/[repository-name]/`
+   - Or directly at `https://[username].github.io/[repository-name]/index.html`
+
+3. **Custom Domain** (optional):
+   - You can add a custom domain in the Pages settings
+   - Create a `CNAME` file with your domain name
+
+The repository includes:
+- `index.html` - Main game file (automatically loads)
+- `.nojekyll` - Prevents Jekyll processing
+- `resilience-valley.html` - Original game file (same as index.html)
+
+---
+
 ## 🚀 Future Enhancements (Ideas)
 
 - [ ] Multiple difficulty modes
@@ -163,6 +190,8 @@ Resilience Valley teaches important concepts about:
 - [ ] More stressor variety with seasonal events
 - [ ] Mobile touch controls
 - [ ] Multiplayer comparison mode
+- [ ] Save/load game progress
+- [ ] Statistics dashboard
 
 ---
 
