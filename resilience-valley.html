@@ -180,15 +180,11 @@
                 <div class="space-y-2 text-xs">
                     <div class="flex justify-between items-center">
                         <span class="text-slate-400">Wall Height:</span>
-                        <span class="text-white font-semibold" id="statDepth">2.0</span>
+                        <span class="text-white font-semibold" id="statDepth">3.5</span>
                     </div>
                     <div class="flex justify-between items-center">
                         <span class="text-slate-400">Floor Width:</span>
-                        <span class="text-white font-semibold" id="statWidth">3.0</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-slate-400">Tether Strength:</span>
-                        <span class="text-white font-semibold" id="statTethers">0.0</span>
+                        <span class="text-white font-semibold" id="statWidth">4.0</span>
                     </div>
                     <div class="flex justify-between items-center">
                         <span class="text-slate-400">Stress Buffer:</span>
@@ -259,7 +255,7 @@
                             <span>❤️ Social Connection</span>
                             <span class="text-pink-200 text-sm">30 RP</span>
                         </div>
-                        <div class="text-xs text-pink-200 mt-1 text-left">Weaves safety net tethers beneath the orb</div>
+                        <div class="text-xs text-pink-200 mt-1 text-left">Holistic support strengthens your entire valley</div>
                     </button>
 
                     <button id="btnMindfulness" class="btn-intervention w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-900 font-semibold py-3 px-4 rounded-xl shadow-lg">
@@ -303,9 +299,8 @@
         let gameRunning = true;
         let age = 20;
         let resiliencePoints = 100;
-        let valleyDepth = 2.0;
-        let valleyWidth = 3.0;
-        let valleyTethers = 0;
+        let valleyDepth = 3.5;
+        let valleyWidth = 4.0;
         let stressBuffer = 0;
 
         // Physics
@@ -341,7 +336,7 @@
             { name: "Metabolic Valley", pos: new THREE.Vector3(12, 0, -12), color: 0x9333ea, emoji: "💎" },
             { name: "Cardio Canyon", pos: new THREE.Vector3(0, 0, 12), color: 0x7f1d1d, emoji: "💔" }
         ];
-        const FAILURE_RADIUS = 3.3;
+        const FAILURE_RADIUS = 5.5;
 
         const STRESS_REDUCTION_PER_LEVEL = 0.12;
         const STRESS_REDUCTION_CAP = 0.45;
@@ -349,9 +344,6 @@
         function getStressReduction() {
             return Math.min(stressBuffer * STRESS_REDUCTION_PER_LEVEL, STRESS_REDUCTION_CAP);
         }
-
-        // Tether lines
-        let tetherLines = [];
 
         // ============================================
         // INITIALIZATION
@@ -422,19 +414,7 @@
             const glow = new THREE.Mesh(glowGeometry, glowMaterial);
             orb.add(glow);
 
-            // Disease valley markers
-            diseaseValleys.forEach(valley => {
-                const markerGeometry = new THREE.ConeGeometry(0.5, 2, 8);
-                const markerMaterial = new THREE.MeshStandardMaterial({
-                    color: valley.color,
-                    emissive: valley.color,
-                    emissiveIntensity: 0.5
-                });
-                const marker = new THREE.Mesh(markerGeometry, markerMaterial);
-                marker.position.copy(valley.pos);
-                marker.position.y = 2;
-                scene.add(marker);
-            });
+            // No visible markers - valleys are part of the landscape
 
             // Add ambient stars
             const starGeometry = new THREE.BufferGeometry();
@@ -519,14 +499,12 @@
                 let y = 0;
                 const distFromCenter = Math.sqrt(x * x + z * z);
 
-                // Health valley (center)
-                if (distFromCenter < valleyWidth) {
-                    // Flat bottom
-                    y = -valleyDepth;
-                } else if (distFromCenter < valleyWidth + 3) {
-                    // Steep walls
-                    const t = (distFromCenter - valleyWidth) / 3;
-                    y = -valleyDepth + (valleyDepth * t * t);
+                // Health valley (center) - smooth rounded bowl
+                const valleyRadius = valleyWidth + 4;
+                if (distFromCenter < valleyRadius) {
+                    // Parabolic bowl shape
+                    const normalizedDist = distFromCenter / valleyRadius;
+                    y = -valleyDepth * (1 - normalizedDist * normalizedDist);
                 }
 
                 // Disease valleys
@@ -598,22 +576,24 @@
             const distFromCenter = Math.sqrt(x * x + z * z);
             let y = 0;
 
-            // Health valley
-            if (distFromCenter < valleyWidth) {
-                y = -valleyDepth;
-            } else if (distFromCenter < valleyWidth + 3) {
-                const t = (distFromCenter - valleyWidth) / 3;
-                y = -valleyDepth + (valleyDepth * t * t);
+            // Health valley - smooth rounded bowl
+            const valleyRadius = valleyWidth + 4;
+            if (distFromCenter < valleyRadius) {
+                const normalizedDist = distFromCenter / valleyRadius;
+                y = -valleyDepth * (1 - normalizedDist * normalizedDist);
             }
 
-            // Disease valleys
+            // Disease valleys - deep and dangerous
             diseaseValleys.forEach(valley => {
                 const dx = x - valley.pos.x;
                 const dz = z - valley.pos.z;
                 const distToValley = Math.sqrt(dx * dx + dz * dz);
 
-                if (distToValley < 3) {
-                    y = Math.min(y, -5 + distToValley * 0.5);
+                if (distToValley < 5) {
+                    // Steeper disease valleys
+                    const normalizedDist = distToValley / 5;
+                    const valleyDepth = -8 * (1 - normalizedDist * normalizedDist);
+                    y = Math.min(y, valleyDepth);
                 }
             });
 
@@ -680,8 +660,10 @@
                 buttonId: 'btnConnection',
                 cost: 30,
                 apply: () => {
-                    valleyTethers = Math.min(valleyTethers + 0.35, 4.0);
-                    showNotification('❤️ Community support strengthened your safety net!');
+                    valleyWidth = Math.min(valleyWidth + 0.15, 5.8);
+                    valleyDepth = Math.min(valleyDepth + 0.15, 6.3);
+                    showNotification('❤️ Social support fortified your entire valley!');
+                    createLandscape();
                 }
             },
             mindfulness: {
@@ -704,7 +686,6 @@
             intervention.apply();
 
             updateOrbToFloor();
-            updateTetherLines();
             updateUI();
         }
 
@@ -717,7 +698,7 @@
 
             setTimeout(() => {
                 notification.remove();
-            }, 2300);
+            }, 3500);
 
             console.log(message);
         }
@@ -804,38 +785,6 @@
             orb.position.y = height + 0.5;
         }
 
-        function updateTetherLines() {
-            // Remove old tethers
-            tetherLines.forEach(line => scene.remove(line));
-            tetherLines = [];
-
-            if (valleyTethers > 0) {
-                const numTethers = Math.floor(valleyTethers * 4);
-                for (let i = 0; i < numTethers; i++) {
-                    const angle = (i / numTethers) * Math.PI * 2;
-                    const radius = 2;
-                    const points = [
-                        orb.position.clone(),
-                        new THREE.Vector3(
-                            Math.cos(angle) * radius,
-                            -valleyDepth,
-                            Math.sin(angle) * radius
-                        )
-                    ];
-
-                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-                    const material = new THREE.LineBasicMaterial({
-                        color: 0xec4899,
-                        transparent: true,
-                        opacity: 0.4
-                    });
-                    const line = new THREE.Line(geometry, material);
-                    scene.add(line);
-                    tetherLines.push(line);
-                }
-            }
-        }
-
         function animate() {
             if (!gameRunning) return;
 
@@ -854,6 +803,12 @@
                 ageTimer = 0;
                 age++;
 
+                // Max age cap - you win!
+                if (age >= 120) {
+                    gameWin();
+                    return;
+                }
+
                 // Milestone notifications
                 if (age === 30) showNotification('🎂 Age 30 - Keep going!');
                 else if (age === 40) showNotification('🎉 Age 40 - Midlife strength!');
@@ -863,6 +818,7 @@
                 else if (age === 80) showNotification('👑 Age 80 - Legendary!');
                 else if (age === 90) showNotification('🦅 Age 90 - Unstoppable!');
                 else if (age === 100) showNotification('🎊 Age 100 - CENTENARIAN!');
+                else if (age === 110) showNotification('🌈 Age 110 - SUPERCENTENARIAN!');
             }
 
             // Earn RP
@@ -917,13 +873,6 @@
             // Slope force (downhill)
             const slopeForce = gradient.clone().multiplyScalar(-40);
 
-            // Tether force (toward center)
-            const tetherForce = new THREE.Vector3(
-                -orb.position.x,
-                0,
-                -orb.position.z
-            ).multiplyScalar(valleyTethers * 5);
-
             // Shake force
             let shakeForce = new THREE.Vector3(0, 0, 0);
             if (shake.time > 0) {
@@ -938,9 +887,7 @@
             }
 
             // Total acceleration
-            const acceleration = slopeForce.clone()
-                .add(tetherForce)
-                .add(shakeForce);
+            const acceleration = slopeForce.clone().add(shakeForce);
 
             // Update velocity
             orbVelocity.add(acceleration.multiplyScalar(dt));
@@ -952,11 +899,6 @@
 
             // Constrain to floor
             updateOrbToFloor();
-
-            // Update tether lines
-            if (tetherLines.length > 0) {
-                updateTetherLines();
-            }
 
             // Check for game over
             diseaseValleys.forEach(valley => {
@@ -998,7 +940,6 @@
             // Update stats
             document.getElementById('statDepth').textContent = valleyDepth.toFixed(1);
             document.getElementById('statWidth').textContent = valleyWidth.toFixed(1);
-            document.getElementById('statTethers').textContent = valleyTethers.toFixed(1);
             document.getElementById('statBuffer').textContent = `${Math.round(getStressReduction() * 100)}%`;
 
             // Enable/disable buttons
@@ -1012,7 +953,7 @@
         }
 
         // ============================================
-        // GAME OVER
+        // GAME OVER & WIN
         // ============================================
         function gameOver(valley) {
             gameRunning = false;
@@ -1035,13 +976,32 @@
             console.log(`☠️ GAME OVER - Fell into ${valley.name} at age ${Math.floor(age)}`);
         }
 
+        function gameWin() {
+            gameRunning = false;
+
+            const modal = document.getElementById('gameOverModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            // Update modal to show victory
+            const modalBox = modal.querySelector('.bg-gradient-to-br');
+            modalBox.style.borderColor = '#fbbf24'; // gold border for victory
+
+            document.getElementById('deathValleyName').parentElement.innerHTML =
+                '<div class="text-yellow-400 text-lg mb-8">🎊 You reached the maximum age! 🎊</div>';
+            document.getElementById('finalAge').textContent = '120';
+            modal.querySelector('h2').textContent = 'Victory!';
+            modal.querySelector('.text-red-500').textContent = '👑';
+
+            console.log(`👑 VICTORY - Reached maximum age of 120!`);
+        }
+
         function restartGame() {
             // Reset all state
             age = 20;
             resiliencePoints = 100;
-            valleyDepth = 2.0;
-            valleyWidth = 3.0;
-            valleyTethers = 0;
+            valleyDepth = 3.5;
+            valleyWidth = 4.0;
             stressBuffer = 0;
             orbVelocity.set(0, 0, 0);
             shake = { intensity: 0, time: 0, duration: 0, phase: 0, frequency: 0 };
@@ -1064,10 +1024,6 @@
 
             // Recreate landscape
             createLandscape();
-
-            // Clear tethers
-            tetherLines.forEach(line => scene.remove(line));
-            tetherLines = [];
 
             // Hide modal
             document.getElementById('gameOverModal').classList.add('hidden');
