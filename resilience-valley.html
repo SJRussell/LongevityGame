@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resilience Valley - A Longevity Defense Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        .glow {
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        @keyframes glow {
+            from { box-shadow: 0 0 5px rgba(234, 179, 8, 0.5), 0 0 10px rgba(234, 179, 8, 0.3); }
+            to { box-shadow: 0 0 20px rgba(234, 179, 8, 0.8), 0 0 30px rgba(234, 179, 8, 0.5); }
+        }
+        .btn-intervention {
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-intervention:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .btn-intervention:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-intervention:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        .stressor-item {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .shake-active {
+            animation: shake 0.1s ease-in-out infinite;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-2px); }
+            75% { transform: translateX(2px); }
+        }
+        .notification {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 2rem 3rem;
+            border-radius: 1rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            z-index: 1000;
+            animation: popNotification 1.5s ease-out;
+            pointer-events: none;
+        }
+        @keyframes popNotification {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            10% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+            20% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+        }
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .intro-overlay {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95));
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease-out;
+        }
+        .intro-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        @keyframes floatOrb {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        .floating {
+            animation: floatOrb 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+
+    <!-- Main Game Canvas -->
+    <div id="gameCanvas"></div>
+
+    <!-- Intro Overlay -->
+    <div id="introOverlay" class="intro-overlay">
+        <div class="max-w-3xl mx-4 bg-slate-800/50 backdrop-blur-md rounded-3xl p-12 border border-slate-700 shadow-2xl">
+            <div class="text-center mb-8">
+                <div class="text-6xl mb-4 floating">🏔️</div>
+                <h1 class="text-5xl font-bold text-white mb-4 bg-gradient-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent">
+                    Resilience Valley
+                </h1>
+                <p class="text-xl text-slate-300">A Longevity Defense Game</p>
+            </div>
+
+            <div class="space-y-4 text-slate-300 mb-8">
+                <div class="bg-slate-900/50 rounded-xl p-4">
+                    <div class="font-semibold text-yellow-400 mb-2">🎯 Your Goal</div>
+                    <p>Protect your glowing Health Orb by building resilience through lifestyle interventions. Survive as long as possible!</p>
+                </div>
+
+                <div class="bg-slate-900/50 rounded-xl p-4">
+                    <div class="font-semibold text-green-400 mb-2">💪 Build Resilience</div>
+                    <p>Spend Resilience Points on Exercise, Sleep, Diet, and Connection to physically strengthen your valley walls.</p>
+                </div>
+
+                <div class="bg-slate-900/50 rounded-xl p-4">
+                    <div class="font-semibold text-red-400 mb-2">⚡ Survive Stressors</div>
+                    <p>Life's stressors will shake your landscape. Keep your orb from falling into the Disease Valleys at the edges!</p>
+                </div>
+
+                <div class="bg-slate-900/50 rounded-xl p-4">
+                    <div class="font-semibold text-purple-400 mb-2">🏆 Endurance Challenge</div>
+                    <p>Your score is your age. How long can you maintain your health through a lifetime of challenges?</p>
+                </div>
+            </div>
+
+            <button id="btnStart" class="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-slate-900 font-bold py-5 px-8 rounded-xl shadow-lg text-2xl transition transform hover:scale-105">
+                Start Your Journey
+            </button>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notificationContainer"></div>
+
+    <!-- UI Overlay -->
+    <div class="fixed inset-0 pointer-events-none">
+        <!-- Top Bar -->
+        <div class="flex justify-between items-start p-6">
+            <!-- Age (Score) -->
+            <div class="pointer-events-auto bg-slate-900/80 backdrop-blur-sm rounded-2xl px-6 py-4 border border-slate-700 shadow-xl">
+                <div class="text-slate-400 text-sm font-medium mb-1">Your Age</div>
+                <div class="text-5xl font-bold text-white" id="ageDisplay">20</div>
+                <div class="text-slate-500 text-xs mt-1">years</div>
+            </div>
+
+            <!-- Resilience Points -->
+            <div class="pointer-events-auto bg-slate-900/80 backdrop-blur-sm rounded-2xl px-6 py-4 border border-yellow-600 shadow-xl glow">
+                <div class="text-yellow-400 text-sm font-medium mb-1">Resilience</div>
+                <div class="text-5xl font-bold text-yellow-300" id="rpDisplay">100</div>
+                <div class="text-yellow-600 text-xs mt-1">points</div>
+            </div>
+
+            <!-- Valley Stats -->
+            <div class="pointer-events-auto bg-slate-900/80 backdrop-blur-sm rounded-2xl px-6 py-4 border border-green-600 shadow-xl">
+                <div class="text-green-400 text-sm font-medium mb-3">Valley Strength</div>
+                <div class="space-y-2 text-xs">
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400">Wall Height:</span>
+                        <span class="text-white font-semibold" id="statDepth">2.0</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400">Floor Width:</span>
+                        <span class="text-white font-semibold" id="statWidth">3.0</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400">Tether Strength:</span>
+                        <span class="text-white font-semibold" id="statTethers">0.0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Section -->
+        <div class="absolute bottom-6 left-6 right-6 flex justify-between items-end gap-6">
+            <!-- Stressor Queue -->
+            <div class="pointer-events-auto bg-slate-900/80 backdrop-blur-sm rounded-2xl p-6 border border-red-900 shadow-xl max-w-md w-full">
+                <div class="flex items-center gap-2 mb-4">
+                    <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                    <h3 class="text-red-400 font-semibold text-lg">Incoming Stressors</h3>
+                </div>
+                <div id="stressorQueue" class="space-y-2 max-h-40 overflow-y-auto">
+                    <div class="text-slate-500 text-sm italic">Life is calm... for now</div>
+                </div>
+            </div>
+
+            <!-- Intervention Buttons -->
+            <div class="pointer-events-auto bg-slate-900/80 backdrop-blur-sm rounded-2xl p-6 border border-green-900 shadow-xl max-w-md w-full">
+                <h3 class="text-green-400 font-semibold text-lg mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Build Your Resilience
+                </h3>
+                <div class="space-y-3">
+                    <button id="btnExercise" class="btn-intervention w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold py-3 px-4 rounded-xl shadow-lg">
+                        <div class="flex justify-between items-center">
+                            <span>💪 Invest in Exercise</span>
+                            <span class="text-blue-200 text-sm">60 RP</span>
+                        </div>
+                        <div class="text-xs text-blue-200 mt-1 text-left">Builds taller valley walls</div>
+                    </button>
+
+                    <button id="btnSleep" class="btn-intervention w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-semibold py-3 px-4 rounded-xl shadow-lg">
+                        <div class="flex justify-between items-center">
+                            <span>😴 Prioritize Sleep</span>
+                            <span class="text-purple-200 text-sm">35 RP</span>
+                        </div>
+                        <div class="text-xs text-purple-200 mt-1 text-left">Deepens your valley</div>
+                    </button>
+
+                    <button id="btnDiet" class="btn-intervention w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white font-semibold py-3 px-4 rounded-xl shadow-lg">
+                        <div class="flex justify-between items-center">
+                            <span>🥗 Build Healthy Diet</span>
+                            <span class="text-green-200 text-sm">45 RP</span>
+                        </div>
+                        <div class="text-xs text-green-200 mt-1 text-left">Widens your valley floor</div>
+                    </button>
+
+                    <button id="btnConnection" class="btn-intervention w-full bg-gradient-to-r from-pink-600 to-pink-700 hover:from-pink-500 hover:to-pink-600 text-white font-semibold py-3 px-4 rounded-xl shadow-lg">
+                        <div class="flex justify-between items-center">
+                            <span>❤️ Foster Connection</span>
+                            <span class="text-pink-200 text-sm">25 RP</span>
+                        </div>
+                        <div class="text-xs text-pink-200 mt-1 text-left">Creates safety net tethers</div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="gameOverModal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-center justify-center z-50">
+        <div class="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-12 max-w-2xl mx-4 border-2 border-red-600 shadow-2xl">
+            <div class="text-center">
+                <div class="text-red-500 text-6xl mb-6">💀</div>
+                <h2 class="text-5xl font-bold text-white mb-4">Game Over</h2>
+                <div class="text-slate-400 text-lg mb-8">
+                    You fell into the <span id="deathValleyName" class="text-red-400 font-semibold"></span>
+                </div>
+                <div class="bg-slate-800/50 rounded-2xl p-8 mb-8">
+                    <div class="text-slate-400 text-sm mb-2">You survived to age</div>
+                    <div id="finalAge" class="text-7xl font-bold text-white mb-2">20</div>
+                    <div class="text-slate-500">years</div>
+                </div>
+                <button id="btnRestart" class="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white font-bold py-4 px-12 rounded-xl shadow-lg text-xl transition transform hover:scale-105">
+                    Play Again
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // GAME STATE
+        // ============================================
+        let scene, camera, renderer, plane, orb;
+        let gameRunning = true;
+        let age = 20;
+        let resiliencePoints = 100;
+        let valleyDepth = 2.0;
+        let valleyWidth = 3.0;
+        let valleyTethers = 0;
+
+        // Physics
+        let orbVelocity = new THREE.Vector3(0, 0, 0);
+        const GRAVITY = 9.8;
+        const DAMPING = 0.96;
+
+        // Shake system
+        let shake = { intensity: 0, time: 0, duration: 0 };
+
+        // Stressor queue
+        let stressorQueue = [];
+        let nextStressorTime = 3;
+        let isShaking = false;
+
+        // Timing
+        let lastTime = Date.now();
+        let ageTimer = 0;
+        const AGE_INCREMENT_TIME = 1.5; // 1 year every 1.5 seconds
+        const RP_PER_SECOND = 3;
+
+        // Disease valleys (positions and properties)
+        const diseaseValleys = [
+            { name: "Valley of Burnout", pos: new THREE.Vector3(-12, 0, -12), color: 0x6b7280, emoji: "🔥" },
+            { name: "Metabolic Valley", pos: new THREE.Vector3(12, 0, -12), color: 0x9333ea, emoji: "💎" },
+            { name: "Cardio Canyon", pos: new THREE.Vector3(0, 0, 12), color: 0x7f1d1d, emoji: "💔" }
+        ];
+        const FAILURE_RADIUS = 4.0;
+
+        // Tether lines
+        let tetherLines = [];
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f172a);
+            scene.fog = new THREE.Fog(0x0f172a, 20, 50);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 18, 18);
+            camera.lookAt(0, 0, 0);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.getElementById('gameCanvas').appendChild(renderer.domElement);
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 10);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.camera.left = -20;
+            directionalLight.shadow.camera.right = 20;
+            directionalLight.shadow.camera.top = 20;
+            directionalLight.shadow.camera.bottom = -20;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+
+            // Point light for orb glow
+            const orbLight = new THREE.PointLight(0xfbbf24, 2, 10);
+            scene.add(orbLight);
+
+            // Create landscape
+            createLandscape();
+
+            // Create Health Orb
+            const orbGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+            const orbMaterial = new THREE.MeshStandardMaterial({
+                color: 0xfbbf24,
+                emissive: 0xfbbf24,
+                emissiveIntensity: 0.5,
+                metalness: 0.3,
+                roughness: 0.2
+            });
+            orb = new THREE.Mesh(orbGeometry, orbMaterial);
+            orb.castShadow = true;
+            orb.position.set(0, 0, 0);
+            scene.add(orb);
+
+            // Orb glow
+            const glowGeometry = new THREE.SphereGeometry(0.7, 32, 32);
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: 0xfbbf24,
+                transparent: true,
+                opacity: 0.3
+            });
+            const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+            orb.add(glow);
+
+            // Disease valley markers
+            diseaseValleys.forEach(valley => {
+                const markerGeometry = new THREE.ConeGeometry(0.5, 2, 8);
+                const markerMaterial = new THREE.MeshStandardMaterial({
+                    color: valley.color,
+                    emissive: valley.color,
+                    emissiveIntensity: 0.5
+                });
+                const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+                marker.position.copy(valley.pos);
+                marker.position.y = 2;
+                scene.add(marker);
+            });
+
+            // Add ambient stars
+            const starGeometry = new THREE.BufferGeometry();
+            const starVertices = [];
+            for (let i = 0; i < 1000; i++) {
+                const x = (Math.random() - 0.5) * 200;
+                const y = Math.random() * 100 + 30;
+                const z = (Math.random() - 0.5) * 200;
+                starVertices.push(x, y, z);
+            }
+            starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+            const starMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.3,
+                transparent: true,
+                opacity: 0.8
+            });
+            const stars = new THREE.Points(starGeometry, starMaterial);
+            scene.add(stars);
+
+            // Event listeners
+            window.addEventListener('resize', onWindowResize);
+            document.getElementById('btnStart').addEventListener('click', startGame);
+            document.getElementById('btnExercise').addEventListener('click', () => purchaseIntervention('exercise'));
+            document.getElementById('btnSleep').addEventListener('click', () => purchaseIntervention('sleep'));
+            document.getElementById('btnDiet').addEventListener('click', () => purchaseIntervention('diet'));
+            document.getElementById('btnConnection').addEventListener('click', () => purchaseIntervention('connection'));
+            document.getElementById('btnRestart').addEventListener('click', restartGame);
+
+            // Update orb position to valley bottom
+            updateOrbToFloor();
+
+            // Don't start animation yet - wait for user to click start
+            // Render one frame to show the scene
+            renderer.render(scene, camera);
+        }
+
+        function startGame() {
+            document.getElementById('introOverlay').classList.add('hidden');
+            lastTime = Date.now();
+            gameRunning = true;
+            animate();
+            showNotification('🏔️ Your journey begins!');
+        }
+
+        // ============================================
+        // LANDSCAPE CREATION
+        // ============================================
+        function createLandscape() {
+            if (plane) {
+                scene.remove(plane);
+            }
+
+            const segments = 60;
+            const size = 30;
+            const geometry = new THREE.PlaneGeometry(size, size, segments, segments);
+
+            // Rotate to horizontal
+            geometry.rotateX(-Math.PI / 2);
+
+            const positions = geometry.attributes.position.array;
+            const colors = new Float32Array(positions.length);
+
+            for (let i = 0; i < positions.length; i += 3) {
+                const x = positions[i];
+                const z = positions[i + 2];
+
+                // Calculate height based on valley type
+                let y = 0;
+                const distFromCenter = Math.sqrt(x * x + z * z);
+
+                // Health valley (center)
+                if (distFromCenter < valleyWidth) {
+                    // Flat bottom
+                    y = -valleyDepth;
+                } else if (distFromCenter < valleyWidth + 3) {
+                    // Steep walls
+                    const t = (distFromCenter - valleyWidth) / 3;
+                    y = -valleyDepth + (valleyDepth * t * t);
+                }
+
+                // Disease valleys
+                diseaseValleys.forEach(valley => {
+                    const dx = x - valley.pos.x;
+                    const dz = z - valley.pos.z;
+                    const distToValley = Math.sqrt(dx * dx + dz * dz);
+
+                    if (distToValley < 3) {
+                        y = Math.min(y, -5 + distToValley * 0.5);
+                    }
+                });
+
+                positions[i + 1] = y;
+
+                // Colors based on position
+                let r, g, b;
+                if (distFromCenter < valleyWidth + 3) {
+                    // Health valley - green
+                    const greenIntensity = 1 - (distFromCenter / (valleyWidth + 3));
+                    r = 0.2 * greenIntensity;
+                    g = 0.6 + (0.3 * greenIntensity);
+                    b = 0.3 * greenIntensity;
+                } else {
+                    // Default terrain
+                    r = 0.3;
+                    g = 0.35;
+                    b = 0.3;
+                }
+
+                // Disease valley colors
+                diseaseValleys.forEach(valley => {
+                    const dx = x - valley.pos.x;
+                    const dz = z - valley.pos.z;
+                    const distToValley = Math.sqrt(dx * dx + dz * dz);
+
+                    if (distToValley < 4) {
+                        const influence = 1 - (distToValley / 4);
+                        const valleyColor = new THREE.Color(valley.color);
+                        r = r * (1 - influence) + valleyColor.r * influence;
+                        g = g * (1 - influence) + valleyColor.g * influence;
+                        b = b * (1 - influence) + valleyColor.b * influence;
+                    }
+                });
+
+                colors[i] = r;
+                colors[i + 1] = g;
+                colors[i + 2] = b;
+            }
+
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            geometry.computeVertexNormals();
+
+            const material = new THREE.MeshStandardMaterial({
+                vertexColors: true,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+
+            plane = new THREE.Mesh(geometry, material);
+            plane.receiveShadow = true;
+            scene.add(plane);
+        }
+
+        // ============================================
+        // LANDSCAPE HEIGHT CALCULATION
+        // ============================================
+        function getLandscapeHeight(x, z) {
+            const distFromCenter = Math.sqrt(x * x + z * z);
+            let y = 0;
+
+            // Health valley
+            if (distFromCenter < valleyWidth) {
+                y = -valleyDepth;
+            } else if (distFromCenter < valleyWidth + 3) {
+                const t = (distFromCenter - valleyWidth) / 3;
+                y = -valleyDepth + (valleyDepth * t * t);
+            }
+
+            // Disease valleys
+            diseaseValleys.forEach(valley => {
+                const dx = x - valley.pos.x;
+                const dz = z - valley.pos.z;
+                const distToValley = Math.sqrt(dx * dx + dz * dz);
+
+                if (distToValley < 3) {
+                    y = Math.min(y, -5 + distToValley * 0.5);
+                }
+            });
+
+            return y;
+        }
+
+        function getLandscapeGradient(x, z) {
+            const delta = 0.1;
+            const hxp = getLandscapeHeight(x + delta, z);
+            const hxn = getLandscapeHeight(x - delta, z);
+            const hzp = getLandscapeHeight(x, z + delta);
+            const hzn = getLandscapeHeight(x, z - delta);
+
+            return new THREE.Vector3(
+                (hxp - hxn) / (2 * delta),
+                0,
+                (hzp - hzn) / (2 * delta)
+            );
+        }
+
+        // ============================================
+        // INTERVENTIONS
+        // ============================================
+        function purchaseIntervention(type) {
+            const costs = {
+                exercise: 60,
+                sleep: 35,
+                diet: 45,
+                connection: 25
+            };
+
+            const cost = costs[type];
+
+            if (resiliencePoints < cost) return;
+
+            resiliencePoints -= cost;
+
+            switch(type) {
+                case 'exercise':
+                    valleyDepth += 0.35;
+                    showNotification('💪 Exercise builds your valley walls!');
+                    break;
+                case 'sleep':
+                    valleyDepth += 0.15;
+                    showNotification('😴 Sleep deepens your resilience!');
+                    break;
+                case 'diet':
+                    valleyWidth += 0.15;
+                    showNotification('🥗 Healthy diet expands your foundation!');
+                    break;
+                case 'connection':
+                    valleyTethers += 0.25;
+                    updateTetherLines();
+                    showNotification('❤️ Connection creates a safety net!');
+                    break;
+            }
+
+            createLandscape();
+            updateUI();
+        }
+
+        function showNotification(message) {
+            const container = document.getElementById('notificationContainer');
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.textContent = message;
+            container.appendChild(notification);
+
+            setTimeout(() => {
+                notification.remove();
+            }, 1500);
+
+            console.log(message);
+        }
+
+        // ============================================
+        // STRESSOR SYSTEM
+        // ============================================
+        const stressorTypes = [
+            { name: "Work Deadline", intensity: 0.15, duration: 2.5, emoji: "💼" },
+            { name: "Family Drama", intensity: 0.12, duration: 2.0, emoji: "👨‍👩‍👧" },
+            { name: "Financial Stress", intensity: 0.18, duration: 3.0, emoji: "💸" },
+            { name: "All-Nighter", intensity: 0.25, duration: 2.0, emoji: "🌙", debuff: true },
+            { name: "Argument", intensity: 0.14, duration: 1.5, emoji: "😠" },
+            { name: "Health Scare", intensity: 0.20, duration: 3.5, emoji: "🏥" },
+            { name: "Moving House", intensity: 0.16, duration: 2.8, emoji: "📦" },
+            { name: "Job Loss", intensity: 0.30, duration: 4.0, emoji: "📉" }
+        ];
+
+        function addStressor() {
+            const type = stressorTypes[Math.floor(Math.random() * stressorTypes.length)];
+            const stressor = { ...type };
+            stressorQueue.push(stressor);
+            updateStressorQueueUI();
+        }
+
+        function triggerStressor(stressor) {
+            isShaking = true;
+            shake.intensity = stressor.intensity;
+            shake.time = stressor.duration;
+            shake.duration = stressor.duration;
+
+            // Visual feedback
+            document.body.classList.add('shake-active');
+
+            if (stressor.debuff) {
+                // Temporary valley shrink for All-Nighter
+                const originalDepth = valleyDepth;
+                valleyDepth *= 0.5;
+                createLandscape();
+
+                setTimeout(() => {
+                    valleyDepth = originalDepth;
+                    createLandscape();
+                }, 5000);
+            }
+
+            console.log(`⚡ STRESSOR: ${stressor.emoji} ${stressor.name}`);
+        }
+
+        function updateStressorQueueUI() {
+            const queueEl = document.getElementById('stressorQueue');
+
+            if (stressorQueue.length === 0) {
+                queueEl.innerHTML = '<div class="text-slate-500 text-sm italic">Life is calm... for now</div>';
+                return;
+            }
+
+            queueEl.innerHTML = stressorQueue.map((s, i) => `
+                <div class="stressor-item bg-red-900/30 border border-red-800 rounded-lg p-3 flex items-center gap-3">
+                    <span class="text-2xl">${s.emoji}</span>
+                    <div class="flex-1">
+                        <div class="text-white font-medium text-sm">${s.name}</div>
+                        <div class="text-red-400 text-xs">Intensity: ${(s.intensity * 100).toFixed(0)}% • ${s.duration}s</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ============================================
+        // PHYSICS & ANIMATION
+        // ============================================
+        function updateOrbToFloor() {
+            const height = getLandscapeHeight(orb.position.x, orb.position.z);
+            orb.position.y = height + 0.5;
+        }
+
+        function updateTetherLines() {
+            // Remove old tethers
+            tetherLines.forEach(line => scene.remove(line));
+            tetherLines = [];
+
+            if (valleyTethers > 0) {
+                const numTethers = Math.floor(valleyTethers * 4);
+                for (let i = 0; i < numTethers; i++) {
+                    const angle = (i / numTethers) * Math.PI * 2;
+                    const radius = 2;
+                    const points = [
+                        orb.position.clone(),
+                        new THREE.Vector3(
+                            Math.cos(angle) * radius,
+                            -valleyDepth,
+                            Math.sin(angle) * radius
+                        )
+                    ];
+
+                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                    const material = new THREE.LineBasicMaterial({
+                        color: 0xec4899,
+                        transparent: true,
+                        opacity: 0.4
+                    });
+                    const line = new THREE.Line(geometry, material);
+                    scene.add(line);
+                    tetherLines.push(line);
+                }
+            }
+        }
+
+        function animate() {
+            if (!gameRunning) return;
+
+            requestAnimationFrame(animate);
+
+            const currentTime = Date.now();
+            const deltaTime = (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+
+            // Clamp delta time
+            const dt = Math.min(deltaTime, 0.05);
+
+            // Update age
+            ageTimer += dt;
+            if (ageTimer >= AGE_INCREMENT_TIME) {
+                ageTimer = 0;
+                age++;
+
+                // Milestone notifications
+                if (age === 30) showNotification('🎂 Age 30 - Keep going!');
+                else if (age === 40) showNotification('🎉 Age 40 - Midlife strength!');
+                else if (age === 50) showNotification('🏆 Age 50 - Half century!');
+                else if (age === 60) showNotification('💪 Age 60 - Still resilient!');
+                else if (age === 70) showNotification('🌟 Age 70 - Amazing!');
+                else if (age === 80) showNotification('👑 Age 80 - Legendary!');
+                else if (age === 90) showNotification('🦅 Age 90 - Unstoppable!');
+                else if (age === 100) showNotification('🎊 Age 100 - CENTENARIAN!');
+            }
+
+            // Earn RP
+            resiliencePoints += RP_PER_SECOND * dt;
+
+            // Update stressor timing
+            nextStressorTime -= dt;
+            if (nextStressorTime <= 0) {
+                addStressor();
+                // Accelerating difficulty
+                const baseTime = Math.max(2, 6 - (age - 20) * 0.05);
+                nextStressorTime = baseTime + Math.random() * 2;
+            }
+
+            // Trigger stressor if not shaking
+            if (!isShaking && stressorQueue.length > 0) {
+                const stressor = stressorQueue.shift();
+                triggerStressor(stressor);
+                updateStressorQueueUI();
+            }
+
+            // Update shake
+            if (shake.time > 0) {
+                shake.time -= dt;
+
+                // Shake the plane
+                plane.position.x = (Math.random() - 0.5) * shake.intensity * 3;
+                plane.position.z = (Math.random() - 0.5) * shake.intensity * 3;
+                plane.rotation.x = -Math.PI / 2 + (Math.random() - 0.5) * shake.intensity * 0.1;
+                plane.rotation.z = (Math.random() - 0.5) * shake.intensity * 0.1;
+
+                if (shake.time <= 0) {
+                    isShaking = false;
+                    plane.position.x = 0;
+                    plane.position.z = 0;
+                    plane.rotation.x = -Math.PI / 2;
+                    plane.rotation.z = 0;
+                    document.body.classList.remove('shake-active');
+                }
+            }
+
+            // Orb physics
+            const gradient = getLandscapeGradient(orb.position.x, orb.position.z);
+
+            // Slope force (downhill)
+            const slopeForce = gradient.clone().multiplyScalar(-40);
+
+            // Tether force (toward center)
+            const tetherForce = new THREE.Vector3(
+                -orb.position.x,
+                0,
+                -orb.position.z
+            ).multiplyScalar(valleyTethers * 5);
+
+            // Shake force
+            let shakeForce = new THREE.Vector3(0, 0, 0);
+            if (shake.time > 0) {
+                shakeForce = new THREE.Vector3(
+                    (Math.random() - 0.5) * shake.intensity * 80,
+                    0,
+                    (Math.random() - 0.5) * shake.intensity * 80
+                );
+            }
+
+            // Total acceleration
+            const acceleration = slopeForce.clone()
+                .add(tetherForce)
+                .add(shakeForce);
+
+            // Update velocity
+            orbVelocity.add(acceleration.multiplyScalar(dt));
+            orbVelocity.multiplyScalar(DAMPING);
+
+            // Update position
+            orb.position.x += orbVelocity.x * dt;
+            orb.position.z += orbVelocity.z * dt;
+
+            // Constrain to floor
+            updateOrbToFloor();
+
+            // Update tether lines
+            if (tetherLines.length > 0) {
+                updateTetherLines();
+            }
+
+            // Check for game over
+            diseaseValleys.forEach(valley => {
+                const distance = orb.position.distanceTo(
+                    new THREE.Vector3(valley.pos.x, orb.position.y, valley.pos.z)
+                );
+
+                if (distance < FAILURE_RADIUS) {
+                    gameOver(valley);
+                }
+            });
+
+            // Update UI
+            updateUI();
+
+            // Update camera (slight follow)
+            camera.position.x = orb.position.x * 0.1;
+            camera.position.z = 18 + orb.position.z * 0.1;
+            camera.lookAt(orb.position);
+
+            // Update orb light
+            const orbLight = scene.children.find(child => child instanceof THREE.PointLight);
+            if (orbLight) {
+                orbLight.position.copy(orb.position);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // ============================================
+        // UI UPDATES
+        // ============================================
+        function updateUI() {
+            document.getElementById('ageDisplay').textContent = Math.floor(age);
+            document.getElementById('rpDisplay').textContent = Math.floor(resiliencePoints);
+
+            // Update stats
+            document.getElementById('statDepth').textContent = valleyDepth.toFixed(1);
+            document.getElementById('statWidth').textContent = valleyWidth.toFixed(1);
+            document.getElementById('statTethers').textContent = valleyTethers.toFixed(1);
+
+            // Enable/disable buttons
+            document.getElementById('btnExercise').disabled = resiliencePoints < 60;
+            document.getElementById('btnSleep').disabled = resiliencePoints < 35;
+            document.getElementById('btnDiet').disabled = resiliencePoints < 45;
+            document.getElementById('btnConnection').disabled = resiliencePoints < 25;
+        }
+
+        // ============================================
+        // GAME OVER
+        // ============================================
+        function gameOver(valley) {
+            gameRunning = false;
+
+            document.getElementById('gameOverModal').classList.remove('hidden');
+            document.getElementById('gameOverModal').classList.add('flex');
+            document.getElementById('deathValleyName').textContent = valley.name;
+            document.getElementById('finalAge').textContent = Math.floor(age);
+
+            // Add some color coding for the game over screen
+            const modal = document.getElementById('gameOverModal').querySelector('.bg-gradient-to-br');
+            if (age >= 80) {
+                modal.style.borderColor = '#10b981'; // green for doing well
+            } else if (age >= 60) {
+                modal.style.borderColor = '#f59e0b'; // yellow for decent
+            } else {
+                modal.style.borderColor = '#ef4444'; // red for not great
+            }
+
+            console.log(`☠️ GAME OVER - Fell into ${valley.name} at age ${Math.floor(age)}`);
+        }
+
+        function restartGame() {
+            // Reset all state
+            age = 20;
+            resiliencePoints = 100;
+            valleyDepth = 2.0;
+            valleyWidth = 3.0;
+            valleyTethers = 0;
+            orbVelocity.set(0, 0, 0);
+            shake = { intensity: 0, time: 0, duration: 0 };
+            stressorQueue = [];
+            nextStressorTime = 3;
+            isShaking = false;
+            ageTimer = 0;
+            lastTime = Date.now();
+            gameRunning = true;
+
+            // Reset orb position
+            orb.position.set(0, 0, 0);
+            updateOrbToFloor();
+
+            // Recreate landscape
+            createLandscape();
+
+            // Clear tethers
+            tetherLines.forEach(line => scene.remove(line));
+            tetherLines = [];
+
+            // Hide modal
+            document.getElementById('gameOverModal').classList.add('hidden');
+            document.getElementById('gameOverModal').classList.remove('flex');
+
+            // Update UI
+            updateUI();
+            updateStressorQueueUI();
+
+            // Restart animation
+            animate();
+        }
+
+        // ============================================
+        // WINDOW RESIZE
+        // ============================================
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // ============================================
+        // START GAME
+        // ============================================
+        init();
+    </script>
+</body>
+</html>
