@@ -170,7 +170,7 @@
             <!-- Resilience Points -->
             <div class="pointer-events-auto bg-slate-900/80 backdrop-blur-sm rounded-2xl px-6 py-4 border border-yellow-600 shadow-xl glow">
                 <div class="text-yellow-400 text-sm font-medium mb-1">Resilience</div>
-                <div class="text-5xl font-bold text-yellow-300" id="rpDisplay">100</div>
+                <div class="text-5xl font-bold text-yellow-300" id="rpDisplay">50</div>
                 <div class="text-yellow-600 text-xs mt-1">points</div>
             </div>
 
@@ -180,11 +180,11 @@
                 <div class="space-y-2 text-xs">
                     <div class="flex justify-between items-center">
                         <span class="text-slate-400">Wall Height:</span>
-                        <span class="text-white font-semibold" id="statDepth">2.5</span>
+                        <span class="text-white font-semibold" id="statDepth">2.0</span>
                     </div>
                     <div class="flex justify-between items-center">
                         <span class="text-slate-400">Floor Width:</span>
-                        <span class="text-white font-semibold" id="statWidth">3.5</span>
+                        <span class="text-white font-semibold" id="statWidth">2.0</span>
                     </div>
                     <div class="flex justify-between items-center">
                         <span class="text-slate-400">Stress Buffer:</span>
@@ -298,9 +298,9 @@
         let scene, camera, renderer, plane, orb, orbLight;
         let gameRunning = true;
         let age = 20;
-        let resiliencePoints = 100;
-        let valleyDepth = 2.5;  // Reduced from 3.5 for more challenge
-        let valleyWidth = 3.5;  // Reduced from 4.0 for more challenge
+        let resiliencePoints = 50;  // Start with less RP - forces strategic choices
+        let valleyDepth = 2.0;  // Shallow valley - very challenging
+        let valleyWidth = 2.0;  // Narrow valley floor - very hard
         let stressBuffer = 0;
 
         // Physics
@@ -328,10 +328,13 @@
         let lastTime = Date.now();
         let ageTimer = 0;
         const AGE_INCREMENT_TIME = 1.0; // 1 year every second
-        const RP_PER_SECOND = 2.5;
+        const RP_PER_SECOND = 1.5;  // Reduced from 2.5 - slower RP generation
 
         // Landscape boundaries - ball fails if it rolls off the edge
         const LANDSCAPE_SIZE = 15;  // Half the terrain size (30x30 plane)
+
+        // Track which intervention types have been used (required to win)
+        let usedInterventions = new Set();
 
         const STRESS_REDUCTION_PER_LEVEL = 0.12;
         const STRESS_REDUCTION_CAP = 0.45;
@@ -490,38 +493,51 @@
                 const x = positions[i];
                 const z = positions[i + 2];
 
-                // Calculate height based on valley type
+                // Calculate height for U-shaped valley
+                // Valley runs along Z-axis, walls on X-axis sides
                 let y = 0;
-                const distFromCenter = Math.sqrt(x * x + z * z);
+                const absX = Math.abs(x);
 
-                // Health valley (center) - smooth rounded bowl
-                const valleyRadius = valleyWidth + 4;
-                if (distFromCenter < valleyRadius) {
-                    // Parabolic bowl shape
-                    const normalizedDist = distFromCenter / valleyRadius;
-                    y = -valleyDepth * (1 - normalizedDist * normalizedDist);
+                // Valley floor width (centered on X=0)
+                const valleyFloor = valleyWidth;
+
+                if (absX < valleyFloor) {
+                    // Inside the valley floor - flat and low
+                    y = -valleyDepth;
+                } else if (absX < valleyFloor + 3) {
+                    // Transition from floor to wall
+                    const transition = (absX - valleyFloor) / 3;
+                    y = -valleyDepth * (1 - transition);
                 } else {
-                    // Steeper slope upward from valley edge to landscape edge
-                    const slopeStart = valleyRadius;
-                    const slopeEnd = LANDSCAPE_SIZE;
-                    const slopeProgress = Math.min((distFromCenter - slopeStart) / (slopeEnd - slopeStart), 1);
-                    // Steeper upward slope from 0 to +4 units for more challenge
-                    y = slopeProgress * slopeProgress * 4.0;
+                    // Rising walls of the U
+                    const wallStart = valleyFloor + 3;
+                    const wallEnd = LANDSCAPE_SIZE - 2;
+
+                    if (absX < wallEnd) {
+                        // Steep wall rising up
+                        const wallProgress = (absX - wallStart) / (wallEnd - wallStart);
+                        y = wallProgress * wallProgress * 6.0;  // Steep walls
+                    } else {
+                        // Lip at top of U - curves down slightly
+                        const lipProgress = (absX - wallEnd) / 2;
+                        const peakHeight = 6.0;
+                        y = peakHeight - lipProgress * lipProgress * 2.0;
+                    }
                 }
 
                 positions[i + 1] = y;
 
-                // Colors based on position
+                // Colors based on position in U-shaped valley
                 let r, g, b;
-                if (distFromCenter < valleyWidth + 3) {
-                    // Health valley - green gradient
-                    const greenIntensity = 1 - (distFromCenter / (valleyWidth + 3));
+                if (absX < valleyFloor + 2) {
+                    // Valley floor - vibrant green
+                    const greenIntensity = 1 - (absX / (valleyFloor + 2));
                     r = 0.2 * greenIntensity;
                     g = 0.6 + (0.3 * greenIntensity);
                     b = 0.3 * greenIntensity;
                 } else {
-                    // Smooth transition to outer terrain (earthy brown/green)
-                    const blendFactor = Math.min((distFromCenter - (valleyWidth + 3)) / 5, 1);
+                    // Walls - earthy brown/green gradient
+                    const blendFactor = Math.min((absX - (valleyFloor + 2)) / 8, 1);
                     r = 0.3 + blendFactor * 0.1;
                     g = 0.35 + blendFactor * 0.05;
                     b = 0.25 + blendFactor * 0.05;
@@ -550,21 +566,33 @@
         // LANDSCAPE HEIGHT CALCULATION
         // ============================================
         function getLandscapeHeight(x, z) {
-            const distFromCenter = Math.sqrt(x * x + z * z);
+            // U-shaped valley along Z-axis, walls on X-axis
             let y = 0;
+            const absX = Math.abs(x);
+            const valleyFloor = valleyWidth;
 
-            // Health valley - smooth rounded bowl
-            const valleyRadius = valleyWidth + 4;
-            if (distFromCenter < valleyRadius) {
-                const normalizedDist = distFromCenter / valleyRadius;
-                y = -valleyDepth * (1 - normalizedDist * normalizedDist);
+            if (absX < valleyFloor) {
+                // Inside the valley floor - flat and low
+                y = -valleyDepth;
+            } else if (absX < valleyFloor + 3) {
+                // Transition from floor to wall
+                const transition = (absX - valleyFloor) / 3;
+                y = -valleyDepth * (1 - transition);
             } else {
-                // Steeper slope upward from valley edge to landscape edge
-                const slopeStart = valleyRadius;
-                const slopeEnd = LANDSCAPE_SIZE;
-                const slopeProgress = Math.min((distFromCenter - slopeStart) / (slopeEnd - slopeStart), 1);
-                // Steeper upward slope from 0 to +4 units for more challenge
-                y = slopeProgress * slopeProgress * 4.0;
+                // Rising walls of the U
+                const wallStart = valleyFloor + 3;
+                const wallEnd = LANDSCAPE_SIZE - 2;
+
+                if (absX < wallEnd) {
+                    // Steep wall rising up
+                    const wallProgress = (absX - wallStart) / (wallEnd - wallStart);
+                    y = wallProgress * wallProgress * 6.0;  // Steep walls
+                } else {
+                    // Lip at top of U - curves down slightly
+                    const lipProgress = (absX - wallEnd) / 2;
+                    const peakHeight = 6.0;
+                    y = peakHeight - lipProgress * lipProgress * 2.0;
+                }
             }
 
             return y;
@@ -653,6 +681,7 @@
             if (resiliencePoints < intervention.cost) return;
 
             resiliencePoints -= intervention.cost;
+            usedInterventions.add(type);  // Track that this intervention was used
             intervention.apply();
 
             updateOrbToFloor();
@@ -773,9 +802,18 @@
                 ageTimer = 0;
                 age++;
 
-                // Max age cap - you win!
+                // Max age cap - but only win if all intervention types were used!
                 if (age >= 120) {
-                    gameWin();
+                    const requiredInterventions = ['resistance', 'cardio', 'sleep', 'nutrition', 'connection', 'mindfulness'];
+                    const allUsed = requiredInterventions.every(type => usedInterventions.has(type));
+
+                    if (allUsed) {
+                        gameWin();
+                    } else {
+                        // Didn't use all interventions - continue playing but show warning
+                        const missing = requiredInterventions.filter(type => !usedInterventions.has(type));
+                        showNotification(`⚠️ You need to use ALL interventions to win! Missing: ${missing.join(', ')}`);
+                    }
                     return;
                 }
 
@@ -798,10 +836,10 @@
             nextStressorTime -= dt;
             if (nextStressorTime <= 0) {
                 addStressor();
-                // Accelerating difficulty (increased minimum time for less constant shaking)
+                // More frequent stressors for increased challenge
                 const difficultyDelta = Math.max(0, age - 20);
-                const baseTime = Math.max(2.5, 6 - difficultyDelta * 0.08);
-                nextStressorTime = baseTime + Math.random() * 2.0;
+                const baseTime = Math.max(1.5, 4 - difficultyDelta * 0.08);
+                nextStressorTime = baseTime + Math.random() * 1.5;
             }
 
             // Trigger stressor if not shaking
@@ -841,19 +879,19 @@
             // Orb physics
             const gradient = getLandscapeGradient(orb.position.x, orb.position.z);
 
-            // Slope force (downhill) - increased for more challenging gameplay
-            const slopeForce = gradient.clone().multiplyScalar(-55);
+            // Slope force (downhill) - MUCH stronger for challenge
+            const slopeForce = gradient.clone().multiplyScalar(-80);
 
-            // Shake force - increased for more challenge
+            // Shake force - VERY strong for real challenge
             let shakeForce = new THREE.Vector3(0, 0, 0);
             if (shake.time > 0) {
                 const normalized = shake.duration > 0 ? Math.max(shake.time, 0) / shake.duration : 0;
-                const strength = shake.intensity * (0.9 + 0.3 * normalized);
-                const directionalScale = 75 + Math.min(age, 90) * 0.7;
+                const strength = shake.intensity * (1.2 + 0.5 * normalized);
+                const directionalScale = 120 + Math.min(age, 90) * 1.2;
                 const forceX = Math.sin(shake.phase) * strength * directionalScale;
                 const forceZ = Math.cos(shake.phase * 0.9) * strength * directionalScale;
-                const jitterX = (Math.random() - 0.5) * strength * 12;
-                const jitterZ = (Math.random() - 0.5) * strength * 12;
+                const jitterX = (Math.random() - 0.5) * strength * 20;
+                const jitterZ = (Math.random() - 0.5) * strength * 20;
                 shakeForce.set(forceX + jitterX, 0, forceZ + jitterZ);
             }
 
@@ -928,6 +966,15 @@
         function gameOver() {
             gameRunning = false;
 
+            // Stop shaking immediately
+            shake.time = 0;
+            shake.intensity = 0;
+            isShaking = false;
+            if (plane) {
+                plane.position.set(0, 0, 0);
+                plane.rotation.set(0, 0, 0);
+            }
+
             document.getElementById('gameOverModal').classList.remove('hidden');
             document.getElementById('gameOverModal').classList.add('flex');
             document.getElementById('deathValleyName').textContent = 'the wilderness';
@@ -949,6 +996,15 @@
         function gameWin() {
             gameRunning = false;
 
+            // Stop shaking immediately
+            shake.time = 0;
+            shake.intensity = 0;
+            isShaking = false;
+            if (plane) {
+                plane.position.set(0, 0, 0);
+                plane.rotation.set(0, 0, 0);
+            }
+
             const modal = document.getElementById('gameOverModal');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
@@ -969,10 +1025,11 @@
         function restartGame() {
             // Reset all state
             age = 20;
-            resiliencePoints = 100;
-            valleyDepth = 2.5;  // Reduced for more challenge
-            valleyWidth = 3.5;  // Reduced for more challenge
+            resiliencePoints = 50;  // Match starting value
+            valleyDepth = 2.0;  // Match starting value
+            valleyWidth = 2.0;  // Match starting value
             stressBuffer = 0;
+            usedInterventions = new Set();  // Reset intervention tracking
             orbVelocity.set(0, 0, 0);
             shake = { intensity: 0, time: 0, duration: 0, phase: 0, frequency: 0 };
             stressorQueue = [];
