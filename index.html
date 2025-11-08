@@ -348,10 +348,10 @@
         // INITIALIZATION
         // ============================================
         function init() {
-            // Scene
+            // Scene - beautiful gradient background
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0f172a);
-            scene.fog = new THREE.Fog(0x0f172a, 20, 50);
+            scene.background = new THREE.Color(0x1a2332);
+            scene.fog = new THREE.Fog(0x1a2332, 25, 55);
 
             // Camera
             camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -367,11 +367,11 @@
             document.getElementById('gameCanvas').appendChild(renderer.domElement);
             renderer.domElement.style.cursor = 'grab';
 
-            // Lights
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            // Lights - enhanced for better landscape appearance
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
             scene.add(ambientLight);
 
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            const directionalLight = new THREE.DirectionalLight(0xfff8e1, 1.0);
             directionalLight.position.set(10, 20, 10);
             directionalLight.castShadow = true;
             directionalLight.shadow.camera.left = -20;
@@ -381,6 +381,11 @@
             directionalLight.shadow.mapSize.width = 2048;
             directionalLight.shadow.mapSize.height = 2048;
             scene.add(directionalLight);
+
+            // Add subtle fill light for better depth
+            const fillLight = new THREE.DirectionalLight(0x8ab4f8, 0.3);
+            fillLight.position.set(-10, 10, -10);
+            scene.add(fillLight);
 
             // Point light for orb glow
             orbLight = new THREE.PointLight(0xfbbf24, 2, 10);
@@ -526,20 +531,30 @@
 
                 positions[i + 1] = y;
 
-                // Colors based on position in circular valley
+                // Colors based on position in circular valley with beautiful gradients
                 let r, g, b;
-                if (distFromCenter < floorRadius + 1) {
-                    // Valley floor - vibrant green
-                    const greenIntensity = 1 - (distFromCenter / (floorRadius + 1));
-                    r = 0.2 * greenIntensity;
-                    g = 0.6 + (0.3 * greenIntensity);
-                    b = 0.3 * greenIntensity;
+                const distNormalized = distFromCenter / LANDSCAPE_SIZE;
+
+                if (distFromCenter < floorRadius) {
+                    // Valley floor - vibrant emerald green gradient
+                    const floorIntensity = 1 - (distFromCenter / floorRadius);
+                    r = 0.1 + floorIntensity * 0.15;
+                    g = 0.7 + floorIntensity * 0.2;
+                    b = 0.3 + floorIntensity * 0.2;
+                } else if (distFromCenter < wallEnd) {
+                    // Rising walls - transition from green to golden brown
+                    const wallProgress = (distFromCenter - floorRadius) / (wallEnd - floorRadius);
+                    // Interpolate from green to warm brown
+                    r = 0.25 + wallProgress * 0.35;
+                    g = 0.7 - wallProgress * 0.3;
+                    b = 0.3 - wallProgress * 0.15;
                 } else {
-                    // Walls and lip - earthy brown/green gradient
-                    const blendFactor = Math.min((distFromCenter - (floorRadius + 1)) / 8, 1);
-                    r = 0.3 + blendFactor * 0.1;
-                    g = 0.35 + blendFactor * 0.05;
-                    b = 0.25 + blendFactor * 0.05;
+                    // Outer lip - darker earthy tones with subtle variation
+                    const lipProgress = (distFromCenter - wallEnd) / (lipEnd - wallEnd);
+                    const variation = Math.sin(x * 0.5) * Math.cos(z * 0.5) * 0.03;
+                    r = 0.45 + lipProgress * 0.15 + variation;
+                    g = 0.35 + lipProgress * 0.1 + variation;
+                    b = 0.25 + lipProgress * 0.05 + variation;
                 }
 
                 colors[i] = r;
@@ -552,8 +567,9 @@
 
             const material = new THREE.MeshStandardMaterial({
                 vertexColors: true,
-                roughness: 0.8,
-                metalness: 0.2
+                roughness: 0.7,
+                metalness: 0.1,
+                flatShading: false
             });
 
             plane = new THREE.Mesh(geometry, material);
