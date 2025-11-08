@@ -493,51 +493,49 @@
                 const x = positions[i];
                 const z = positions[i + 2];
 
-                // Calculate height for U-shaped valley
-                // Valley runs along Z-axis, walls on X-axis sides
+                // Calculate height for circular cup/bowl with downward lip
                 let y = 0;
-                const absX = Math.abs(x);
+                const distFromCenter = Math.sqrt(x * x + z * z);
 
-                // Valley floor width (centered on X=0)
-                const valleyFloor = valleyWidth;
+                // Valley floor radius
+                const floorRadius = valleyWidth;
+                const wallStart = floorRadius;
+                const wallEnd = floorRadius + 5;
+                const peakRadius = wallEnd;
+                const lipEnd = LANDSCAPE_SIZE;
 
-                if (absX < valleyFloor) {
-                    // Inside the valley floor - flat and low
+                if (distFromCenter < floorRadius) {
+                    // Valley floor - flat at bottom
                     y = -valleyDepth;
-                } else if (absX < valleyFloor + 3) {
-                    // Transition from floor to wall
-                    const transition = (absX - valleyFloor) / 3;
-                    y = -valleyDepth * (1 - transition);
+                } else if (distFromCenter < wallEnd) {
+                    // Rising walls - steep climb
+                    const wallProgress = (distFromCenter - wallStart) / (wallEnd - wallStart);
+                    const peakHeight = 4.0;
+                    y = -valleyDepth + (peakHeight + valleyDepth) * (wallProgress * wallProgress);
+                } else if (distFromCenter < lipEnd) {
+                    // Lip curves back down (gravity well edge)
+                    const peakHeight = 4.0;
+                    const lipProgress = (distFromCenter - peakRadius) / (lipEnd - peakRadius);
+                    // Curve down from peak to negative (below zero plane)
+                    y = peakHeight - lipProgress * lipProgress * 6.0;
                 } else {
-                    // Rising walls of the U
-                    const wallStart = valleyFloor + 3;
-                    const wallEnd = LANDSCAPE_SIZE - 2;
-
-                    if (absX < wallEnd) {
-                        // Steep wall rising up
-                        const wallProgress = (absX - wallStart) / (wallEnd - wallStart);
-                        y = wallProgress * wallProgress * 6.0;  // Steep walls
-                    } else {
-                        // Lip at top of U - curves down slightly
-                        const lipProgress = (absX - wallEnd) / 2;
-                        const peakHeight = 6.0;
-                        y = peakHeight - lipProgress * lipProgress * 2.0;
-                    }
+                    // Beyond edge - steep drop
+                    y = -2.0;
                 }
 
                 positions[i + 1] = y;
 
-                // Colors based on position in U-shaped valley
+                // Colors based on position in circular valley
                 let r, g, b;
-                if (absX < valleyFloor + 2) {
+                if (distFromCenter < floorRadius + 1) {
                     // Valley floor - vibrant green
-                    const greenIntensity = 1 - (absX / (valleyFloor + 2));
+                    const greenIntensity = 1 - (distFromCenter / (floorRadius + 1));
                     r = 0.2 * greenIntensity;
                     g = 0.6 + (0.3 * greenIntensity);
                     b = 0.3 * greenIntensity;
                 } else {
-                    // Walls - earthy brown/green gradient
-                    const blendFactor = Math.min((absX - (valleyFloor + 2)) / 8, 1);
+                    // Walls and lip - earthy brown/green gradient
+                    const blendFactor = Math.min((distFromCenter - (floorRadius + 1)) / 8, 1);
                     r = 0.3 + blendFactor * 0.1;
                     g = 0.35 + blendFactor * 0.05;
                     b = 0.25 + blendFactor * 0.05;
@@ -566,33 +564,34 @@
         // LANDSCAPE HEIGHT CALCULATION
         // ============================================
         function getLandscapeHeight(x, z) {
-            // U-shaped valley along Z-axis, walls on X-axis
+            // Circular cup/bowl with downward curving lip
             let y = 0;
-            const absX = Math.abs(x);
-            const valleyFloor = valleyWidth;
+            const distFromCenter = Math.sqrt(x * x + z * z);
 
-            if (absX < valleyFloor) {
-                // Inside the valley floor - flat and low
+            // Valley floor radius
+            const floorRadius = valleyWidth;
+            const wallStart = floorRadius;
+            const wallEnd = floorRadius + 5;
+            const peakRadius = wallEnd;
+            const lipEnd = LANDSCAPE_SIZE;
+
+            if (distFromCenter < floorRadius) {
+                // Valley floor - flat at bottom
                 y = -valleyDepth;
-            } else if (absX < valleyFloor + 3) {
-                // Transition from floor to wall
-                const transition = (absX - valleyFloor) / 3;
-                y = -valleyDepth * (1 - transition);
+            } else if (distFromCenter < wallEnd) {
+                // Rising walls - steep climb
+                const wallProgress = (distFromCenter - wallStart) / (wallEnd - wallStart);
+                const peakHeight = 4.0;
+                y = -valleyDepth + (peakHeight + valleyDepth) * (wallProgress * wallProgress);
+            } else if (distFromCenter < lipEnd) {
+                // Lip curves back down (gravity well edge)
+                const peakHeight = 4.0;
+                const lipProgress = (distFromCenter - peakRadius) / (lipEnd - peakRadius);
+                // Curve down from peak to negative (below zero plane)
+                y = peakHeight - lipProgress * lipProgress * 6.0;
             } else {
-                // Rising walls of the U
-                const wallStart = valleyFloor + 3;
-                const wallEnd = LANDSCAPE_SIZE - 2;
-
-                if (absX < wallEnd) {
-                    // Steep wall rising up
-                    const wallProgress = (absX - wallStart) / (wallEnd - wallStart);
-                    y = wallProgress * wallProgress * 6.0;  // Steep walls
-                } else {
-                    // Lip at top of U - curves down slightly
-                    const lipProgress = (absX - wallEnd) / 2;
-                    const peakHeight = 6.0;
-                    y = peakHeight - lipProgress * lipProgress * 2.0;
-                }
+                // Beyond edge - steep drop
+                y = -2.0;
             }
 
             return y;
@@ -760,20 +759,41 @@
         function updateStressorQueueUI() {
             const queueEl = document.getElementById('stressorQueue');
 
-            if (stressorQueue.length === 0) {
-                queueEl.innerHTML = '<div class="text-slate-500 text-sm italic">Life is calm... for now</div>';
-                return;
-            }
+            // Show countdown to next stressor
+            const countdown = Math.max(0, nextStressorTime).toFixed(1);
+            const countdownPercent = Math.min(100, (countdown / 5) * 100); // Assume max 5s between stressors
 
-            queueEl.innerHTML = stressorQueue.map((s, i) => `
-                <div class="stressor-item bg-red-900/30 border border-red-800 rounded-lg p-3 flex items-center gap-3">
-                    <span class="text-2xl">${s.emoji}</span>
-                    <div class="flex-1">
-                        <div class="text-white font-medium text-sm">${s.name}</div>
-                        <div class="text-red-400 text-xs">Intensity: ${(s.intensity * 100).toFixed(0)}% • ${s.duration}s</div>
+            let html = `
+                <div class="mb-3 bg-slate-800/50 rounded-lg p-2.5">
+                    <div class="flex justify-between items-center mb-1.5">
+                        <span class="text-slate-400 text-xs font-medium">Next Stressor In:</span>
+                        <span class="text-yellow-400 text-sm font-bold">${countdown}s</span>
+                    </div>
+                    <div class="w-full bg-slate-700 rounded-full h-1.5">
+                        <div class="bg-gradient-to-r from-yellow-500 to-red-500 h-1.5 rounded-full transition-all duration-100"
+                             style="width: ${countdownPercent}%"></div>
                     </div>
                 </div>
-            `).join('');
+            `;
+
+            if (stressorQueue.length === 0) {
+                html += '<div class="text-slate-500 text-sm italic">No stressors queued</div>';
+            } else {
+                html += stressorQueue.map((s, i) => `
+                    <div class="stressor-item bg-red-900/30 border border-red-800 rounded-lg p-2.5 flex items-center gap-2.5 mb-2">
+                        <div class="flex-shrink-0 w-6 h-6 bg-red-800 rounded-full flex items-center justify-center text-xs text-white font-bold">
+                            ${i + 1}
+                        </div>
+                        <span class="text-xl flex-shrink-0">${s.emoji}</span>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-white font-medium text-xs">${s.name}</div>
+                            <div class="text-red-400 text-xs">Impact: ${(s.intensity * 100).toFixed(0)}%</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            queueEl.innerHTML = html;
         }
 
         // ============================================
@@ -858,18 +878,14 @@
                 const amplitude = shake.intensity * falloff;
 
                 if (plane) {
-                    // Reduced shake amplitudes for smoother visuals
-                    plane.position.x = Math.sin(shake.phase) * amplitude * 0.8;
-                    plane.position.z = Math.cos(shake.phase * 0.85) * amplitude * 0.7;
-                    plane.rotation.x = Math.sin(shake.phase * 0.5) * amplitude * 0.05;
-                    plane.rotation.y = Math.sin(shake.phase * 0.3) * amplitude * 0.06;
-                    plane.rotation.z = Math.cos(shake.phase * 0.5) * amplitude * 0.05;
+                    // ONLY rotate the landscape, don't translate position (avoids UI shifting)
+                    plane.rotation.x = Math.sin(shake.phase * 0.7) * amplitude * 0.15;
+                    plane.rotation.z = Math.cos(shake.phase * 0.9) * amplitude * 0.15;
                 }
 
                 if (shake.time <= 0) {
                     isShaking = false;
                     if (plane) {
-                        plane.position.set(0, 0, 0);
                         plane.rotation.set(0, 0, 0);
                     }
                     document.body.classList.remove('shake-active');
@@ -958,6 +974,9 @@
                     button.disabled = resiliencePoints < cost;
                 }
             });
+
+            // Update stressor countdown
+            updateStressorQueueUI();
         }
 
         // ============================================
@@ -971,7 +990,6 @@
             shake.intensity = 0;
             isShaking = false;
             if (plane) {
-                plane.position.set(0, 0, 0);
                 plane.rotation.set(0, 0, 0);
             }
 
@@ -1001,7 +1019,6 @@
             shake.intensity = 0;
             isShaking = false;
             if (plane) {
-                plane.position.set(0, 0, 0);
                 plane.rotation.set(0, 0, 0);
             }
 
