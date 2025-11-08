@@ -311,6 +311,7 @@
 
         // Shake system
         let shake = { intensity: 0, time: 0, duration: 0, phase: 0, frequency: 0 };
+        let activeStressor = null;
 
         // Stressor queue
         let stressorQueue = [];
@@ -724,6 +725,7 @@
 
         function triggerStressor(stressor) {
             isShaking = true;
+            activeStressor = stressor;
             const ageDifficulty = Math.max(0, (age - 20) / 60);
             const intensityScale = 1 + ageDifficulty * 0.9;
             const durationScale = 1 + ageDifficulty * 0.4;
@@ -734,9 +736,6 @@
             shake.time = shake.duration;
             shake.frequency = 1.4 + Math.random() * 0.6 + ageDifficulty * 0.6;
             shake.phase = 0;
-
-            // Visual feedback
-            document.body.classList.add('shake-active');
 
             if (stressor.debuff) {
                 // Temporary valley shrink for All-Nighter
@@ -759,11 +758,39 @@
         function updateStressorQueueUI() {
             const queueEl = document.getElementById('stressorQueue');
 
+            let html = '';
+
+            // Show active stressor if there is one
+            if (activeStressor) {
+                const timeRemaining = Math.max(0, shake.time).toFixed(1);
+                const durationPercent = shake.duration > 0 ? (shake.time / shake.duration * 100) : 0;
+
+                html += `
+                    <div class="mb-3 bg-red-900/50 border-2 border-red-500 rounded-lg p-3 animate-pulse">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="text-3xl">${activeStressor.emoji}</span>
+                            <div class="flex-1">
+                                <div class="text-white font-bold text-sm">${activeStressor.name}</div>
+                                <div class="text-red-300 text-xs">Active Stressor</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-yellow-400 text-lg font-bold">${timeRemaining}s</div>
+                                <div class="text-slate-400 text-xs">remaining</div>
+                            </div>
+                        </div>
+                        <div class="w-full bg-slate-700 rounded-full h-2">
+                            <div class="bg-gradient-to-r from-red-500 to-orange-500 h-2 rounded-full transition-all duration-100"
+                                 style="width: ${durationPercent}%"></div>
+                        </div>
+                    </div>
+                `;
+            }
+
             // Show countdown to next stressor
             const countdown = Math.max(0, nextStressorTime).toFixed(1);
-            const countdownPercent = Math.min(100, (countdown / 5) * 100); // Assume max 5s between stressors
+            const countdownPercent = Math.min(100, (countdown / 5) * 100);
 
-            let html = `
+            html += `
                 <div class="mb-3 bg-slate-800/50 rounded-lg p-2.5">
                     <div class="flex justify-between items-center mb-1.5">
                         <span class="text-slate-400 text-xs font-medium">Next Stressor In:</span>
@@ -776,6 +803,7 @@
                 </div>
             `;
 
+            // Show queued stressors
             if (stressorQueue.length === 0) {
                 html += '<div class="text-slate-500 text-sm italic">No stressors queued</div>';
             } else {
@@ -869,26 +897,14 @@
                 updateStressorQueueUI();
             }
 
-            // Update shake
+            // Update shake timer (shake affects ball physics only, no visual shake)
             if (shake.time > 0) {
                 shake.time -= dt;
                 shake.phase += dt * shake.frequency;
-                const normalized = shake.duration > 0 ? Math.max(shake.time, 0) / shake.duration : 0;
-                const falloff = 0.6 + 0.4 * normalized;
-                const amplitude = shake.intensity * falloff;
-
-                if (plane) {
-                    // ONLY rotate the landscape, don't translate position (avoids UI shifting)
-                    plane.rotation.x = Math.sin(shake.phase * 0.7) * amplitude * 0.15;
-                    plane.rotation.z = Math.cos(shake.phase * 0.9) * amplitude * 0.15;
-                }
 
                 if (shake.time <= 0) {
                     isShaking = false;
-                    if (plane) {
-                        plane.rotation.set(0, 0, 0);
-                    }
-                    document.body.classList.remove('shake-active');
+                    activeStressor = null;
                 }
             }
 
@@ -989,9 +1005,7 @@
             shake.time = 0;
             shake.intensity = 0;
             isShaking = false;
-            if (plane) {
-                plane.rotation.set(0, 0, 0);
-            }
+            activeStressor = null;
 
             document.getElementById('gameOverModal').classList.remove('hidden');
             document.getElementById('gameOverModal').classList.add('flex');
@@ -1018,9 +1032,7 @@
             shake.time = 0;
             shake.intensity = 0;
             isShaking = false;
-            if (plane) {
-                plane.rotation.set(0, 0, 0);
-            }
+            activeStressor = null;
 
             const modal = document.getElementById('gameOverModal');
             modal.classList.remove('hidden');
@@ -1049,6 +1061,7 @@
             usedInterventions = new Set();  // Reset intervention tracking
             orbVelocity.set(0, 0, 0);
             shake = { intensity: 0, time: 0, duration: 0, phase: 0, frequency: 0 };
+            activeStressor = null;
             stressorQueue = [];
             nextStressorTime = 3;
             isShaking = false;
