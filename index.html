@@ -138,7 +138,7 @@
 
                 <div class="bg-slate-900/50 rounded-xl p-4">
                     <div class="font-semibold text-red-400 mb-2">⚡ Survive Stressors</div>
-                    <p>Life's stressors will shake your landscape. Keep your orb from falling into the Disease Valleys at the edges!</p>
+                    <p>Life's stressors will shake your landscape. Keep your orb from rolling off the edge into the wilderness!</p>
                 </div>
 
                 <div class="bg-slate-900/50 rounded-xl p-4">
@@ -180,11 +180,11 @@
                 <div class="space-y-2 text-xs">
                     <div class="flex justify-between items-center">
                         <span class="text-slate-400">Wall Height:</span>
-                        <span class="text-white font-semibold" id="statDepth">3.5</span>
+                        <span class="text-white font-semibold" id="statDepth">2.5</span>
                     </div>
                     <div class="flex justify-between items-center">
                         <span class="text-slate-400">Floor Width:</span>
-                        <span class="text-white font-semibold" id="statWidth">4.0</span>
+                        <span class="text-white font-semibold" id="statWidth">3.5</span>
                     </div>
                     <div class="flex justify-between items-center">
                         <span class="text-slate-400">Stress Buffer:</span>
@@ -277,7 +277,7 @@
                 <div class="text-red-500 text-6xl mb-6">💀</div>
                 <h2 class="text-5xl font-bold text-white mb-4">Game Over</h2>
                 <div class="text-slate-400 text-lg mb-8">
-                    You fell into the <span id="deathValleyName" class="text-red-400 font-semibold"></span>
+                    Your orb rolled off into <span id="deathValleyName" class="text-red-400 font-semibold"></span>
                 </div>
                 <div class="bg-slate-800/50 rounded-2xl p-8 mb-8">
                     <div class="text-slate-400 text-sm mb-2">You survived to age</div>
@@ -299,8 +299,8 @@
         let gameRunning = true;
         let age = 20;
         let resiliencePoints = 100;
-        let valleyDepth = 3.5;
-        let valleyWidth = 4.0;
+        let valleyDepth = 2.5;  // Reduced from 3.5 for more challenge
+        let valleyWidth = 3.5;  // Reduced from 4.0 for more challenge
         let stressBuffer = 0;
 
         // Physics
@@ -330,13 +330,8 @@
         const AGE_INCREMENT_TIME = 1.0; // 1 year every second
         const RP_PER_SECOND = 2.5;
 
-        // Disease valleys (positions and properties)
-        const diseaseValleys = [
-            { name: "Valley of Burnout", pos: new THREE.Vector3(-12, 0, -12), color: 0x6b7280, emoji: "🔥" },
-            { name: "Metabolic Valley", pos: new THREE.Vector3(12, 0, -12), color: 0x9333ea, emoji: "💎" },
-            { name: "Cardio Canyon", pos: new THREE.Vector3(0, 0, 12), color: 0x7f1d1d, emoji: "💔" }
-        ];
-        const FAILURE_RADIUS = 5.5;
+        // Landscape boundaries - ball fails if it rolls off the edge
+        const LANDSCAPE_SIZE = 15;  // Half the terrain size (30x30 plane)
 
         const STRESS_REDUCTION_PER_LEVEL = 0.12;
         const STRESS_REDUCTION_CAP = 0.45;
@@ -505,50 +500,32 @@
                     // Parabolic bowl shape
                     const normalizedDist = distFromCenter / valleyRadius;
                     y = -valleyDepth * (1 - normalizedDist * normalizedDist);
+                } else {
+                    // Steeper slope upward from valley edge to landscape edge
+                    const slopeStart = valleyRadius;
+                    const slopeEnd = LANDSCAPE_SIZE;
+                    const slopeProgress = Math.min((distFromCenter - slopeStart) / (slopeEnd - slopeStart), 1);
+                    // Steeper upward slope from 0 to +4 units for more challenge
+                    y = slopeProgress * slopeProgress * 4.0;
                 }
-
-                // Disease valleys
-                diseaseValleys.forEach(valley => {
-                    const dx = x - valley.pos.x;
-                    const dz = z - valley.pos.z;
-                    const distToValley = Math.sqrt(dx * dx + dz * dz);
-
-                    if (distToValley < 3) {
-                        y = Math.min(y, -5 + distToValley * 0.5);
-                    }
-                });
 
                 positions[i + 1] = y;
 
                 // Colors based on position
                 let r, g, b;
                 if (distFromCenter < valleyWidth + 3) {
-                    // Health valley - green
+                    // Health valley - green gradient
                     const greenIntensity = 1 - (distFromCenter / (valleyWidth + 3));
                     r = 0.2 * greenIntensity;
                     g = 0.6 + (0.3 * greenIntensity);
                     b = 0.3 * greenIntensity;
                 } else {
-                    // Default terrain
-                    r = 0.3;
-                    g = 0.35;
-                    b = 0.3;
+                    // Smooth transition to outer terrain (earthy brown/green)
+                    const blendFactor = Math.min((distFromCenter - (valleyWidth + 3)) / 5, 1);
+                    r = 0.3 + blendFactor * 0.1;
+                    g = 0.35 + blendFactor * 0.05;
+                    b = 0.25 + blendFactor * 0.05;
                 }
-
-                // Disease valley colors
-                diseaseValleys.forEach(valley => {
-                    const dx = x - valley.pos.x;
-                    const dz = z - valley.pos.z;
-                    const distToValley = Math.sqrt(dx * dx + dz * dz);
-
-                    if (distToValley < 4) {
-                        const influence = 1 - (distToValley / 4);
-                        const valleyColor = new THREE.Color(valley.color);
-                        r = r * (1 - influence) + valleyColor.r * influence;
-                        g = g * (1 - influence) + valleyColor.g * influence;
-                        b = b * (1 - influence) + valleyColor.b * influence;
-                    }
-                });
 
                 colors[i] = r;
                 colors[i + 1] = g;
@@ -581,21 +558,14 @@
             if (distFromCenter < valleyRadius) {
                 const normalizedDist = distFromCenter / valleyRadius;
                 y = -valleyDepth * (1 - normalizedDist * normalizedDist);
+            } else {
+                // Steeper slope upward from valley edge to landscape edge
+                const slopeStart = valleyRadius;
+                const slopeEnd = LANDSCAPE_SIZE;
+                const slopeProgress = Math.min((distFromCenter - slopeStart) / (slopeEnd - slopeStart), 1);
+                // Steeper upward slope from 0 to +4 units for more challenge
+                y = slopeProgress * slopeProgress * 4.0;
             }
-
-            // Disease valleys - deep and dangerous
-            diseaseValleys.forEach(valley => {
-                const dx = x - valley.pos.x;
-                const dz = z - valley.pos.z;
-                const distToValley = Math.sqrt(dx * dx + dz * dz);
-
-                if (distToValley < 5) {
-                    // Steeper disease valleys
-                    const normalizedDist = distToValley / 5;
-                    const valleyDepth = -8 * (1 - normalizedDist * normalizedDist);
-                    y = Math.min(y, valleyDepth);
-                }
-            });
 
             return y;
         }
@@ -828,10 +798,10 @@
             nextStressorTime -= dt;
             if (nextStressorTime <= 0) {
                 addStressor();
-                // Accelerating difficulty
+                // Accelerating difficulty (increased minimum time for less constant shaking)
                 const difficultyDelta = Math.max(0, age - 20);
-                const baseTime = Math.max(1.4, 5 - difficultyDelta * 0.08);
-                nextStressorTime = baseTime + Math.random() * 1.6;
+                const baseTime = Math.max(2.5, 6 - difficultyDelta * 0.08);
+                nextStressorTime = baseTime + Math.random() * 2.0;
             }
 
             // Trigger stressor if not shaking
@@ -850,11 +820,12 @@
                 const amplitude = shake.intensity * falloff;
 
                 if (plane) {
-                    plane.position.x = Math.sin(shake.phase) * amplitude * 1.8;
-                    plane.position.z = Math.cos(shake.phase * 0.85) * amplitude * 1.6;
-                    plane.rotation.x = Math.sin(shake.phase * 0.5) * amplitude * 0.12;
-                    plane.rotation.y = Math.sin(shake.phase * 0.3) * amplitude * 0.15;
-                    plane.rotation.z = Math.cos(shake.phase * 0.5) * amplitude * 0.12;
+                    // Reduced shake amplitudes for smoother visuals
+                    plane.position.x = Math.sin(shake.phase) * amplitude * 0.8;
+                    plane.position.z = Math.cos(shake.phase * 0.85) * amplitude * 0.7;
+                    plane.rotation.x = Math.sin(shake.phase * 0.5) * amplitude * 0.05;
+                    plane.rotation.y = Math.sin(shake.phase * 0.3) * amplitude * 0.06;
+                    plane.rotation.z = Math.cos(shake.phase * 0.5) * amplitude * 0.05;
                 }
 
                 if (shake.time <= 0) {
@@ -870,19 +841,19 @@
             // Orb physics
             const gradient = getLandscapeGradient(orb.position.x, orb.position.z);
 
-            // Slope force (downhill)
-            const slopeForce = gradient.clone().multiplyScalar(-40);
+            // Slope force (downhill) - increased for more challenging gameplay
+            const slopeForce = gradient.clone().multiplyScalar(-55);
 
-            // Shake force
+            // Shake force - increased for more challenge
             let shakeForce = new THREE.Vector3(0, 0, 0);
             if (shake.time > 0) {
                 const normalized = shake.duration > 0 ? Math.max(shake.time, 0) / shake.duration : 0;
-                const strength = shake.intensity * (0.8 + 0.2 * normalized);
-                const directionalScale = 60 + Math.min(age, 90) * 0.5;
+                const strength = shake.intensity * (0.9 + 0.3 * normalized);
+                const directionalScale = 75 + Math.min(age, 90) * 0.7;
                 const forceX = Math.sin(shake.phase) * strength * directionalScale;
                 const forceZ = Math.cos(shake.phase * 0.9) * strength * directionalScale;
-                const jitterX = (Math.random() - 0.5) * strength * 8;
-                const jitterZ = (Math.random() - 0.5) * strength * 8;
+                const jitterX = (Math.random() - 0.5) * strength * 12;
+                const jitterZ = (Math.random() - 0.5) * strength * 12;
                 shakeForce.set(forceX + jitterX, 0, forceZ + jitterZ);
             }
 
@@ -900,23 +871,22 @@
             // Constrain to floor
             updateOrbToFloor();
 
-            // Check for game over
-            diseaseValleys.forEach(valley => {
-                const distance = orb.position.distanceTo(
-                    new THREE.Vector3(valley.pos.x, orb.position.y, valley.pos.z)
-                );
+            // Check for game over - ball rolled off the edge
+            const distFromCenter = Math.sqrt(
+                orb.position.x * orb.position.x +
+                orb.position.z * orb.position.z
+            );
 
-                if (distance < FAILURE_RADIUS) {
-                    gameOver(valley);
-                }
-            });
+            if (distFromCenter > LANDSCAPE_SIZE) {
+                gameOver();
+            }
 
             // Update UI
             updateUI();
 
             // Update camera (orbit controls)
             const horizontalRadius = Math.cos(cameraElevation) * CAMERA_DISTANCE;
-            cameraTarget.copy(orb.position);
+            cameraTarget.set(0, 0, 0);  // Center on landscape, not orb
             camera.position.x = cameraTarget.x + Math.sin(cameraAzimuth) * horizontalRadius;
             camera.position.z = cameraTarget.z + Math.cos(cameraAzimuth) * horizontalRadius;
             camera.position.y = cameraTarget.y + Math.sin(cameraElevation) * CAMERA_DISTANCE;
@@ -955,12 +925,12 @@
         // ============================================
         // GAME OVER & WIN
         // ============================================
-        function gameOver(valley) {
+        function gameOver() {
             gameRunning = false;
 
             document.getElementById('gameOverModal').classList.remove('hidden');
             document.getElementById('gameOverModal').classList.add('flex');
-            document.getElementById('deathValleyName').textContent = valley.name;
+            document.getElementById('deathValleyName').textContent = 'the wilderness';
             document.getElementById('finalAge').textContent = Math.floor(age);
 
             // Add some color coding for the game over screen
@@ -973,7 +943,7 @@
                 modal.style.borderColor = '#ef4444'; // red for not great
             }
 
-            console.log(`☠️ GAME OVER - Fell into ${valley.name} at age ${Math.floor(age)}`);
+            console.log(`☠️ GAME OVER - Ball rolled off the edge at age ${Math.floor(age)}`);
         }
 
         function gameWin() {
@@ -1000,8 +970,8 @@
             // Reset all state
             age = 20;
             resiliencePoints = 100;
-            valleyDepth = 3.5;
-            valleyWidth = 4.0;
+            valleyDepth = 2.5;  // Reduced for more challenge
+            valleyWidth = 3.5;  // Reduced for more challenge
             stressBuffer = 0;
             orbVelocity.set(0, 0, 0);
             shake = { intensity: 0, time: 0, duration: 0, phase: 0, frequency: 0 };
